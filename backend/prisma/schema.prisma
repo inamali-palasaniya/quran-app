@@ -55,7 +55,7 @@ model Ayah {
   paraId      Int?
   paraNumber  Int?
   rukuNumber  Int?
-  textArabic  String        @db.LongText
+  textArabic  String        @db.Text
   translation Translation[]
   tafsirs     Tafsir[]
 
@@ -71,7 +71,7 @@ model Translation {
   ayahId     Int
   language   String // en, ur, bn, etc.
   translator String
-  text       String @db.LongText
+  text       String @db.Text
 
   ayah Ayah @relation(fields: [ayahId], references: [id])
 }
@@ -80,7 +80,7 @@ model Tafsir {
   id      Int    @id @default(autoincrement())
   ayahId  Int
   scholar String
-  text    String @db.LongText
+  text    String @db.Text
 
   ayah Ayah @relation(fields: [ayahId], references: [id])
 }
