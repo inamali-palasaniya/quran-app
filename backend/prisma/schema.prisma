@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Kitab {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  nameArabic  String?
+  description String?
+  surahs      Surah[]
+  paras       Para[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  ayahs       Ayah[]
+}
+
+model Surah {
+  id          Int    @id @default(autoincrement())
+  kitabId     Int
+  surahNumber Int    @unique
+  name        String
+  nameArabic  String
+  versesCount Int
+  revelation  String // Makkah or Madinah
+  ayahs       Ayah[]
+  kitab       Kitab  @relation(fields: [kitabId], references: [id])
+}
+
+model Para {
+  id         Int    @id @default(autoincrement())
+  kitabId    Int
+  paraNumber Int    @unique
+  name       String
+  ayahs      Ayah[]
+  kitab      Kitab  @relation(fields: [kitabId], references: [id])
+}
+
+model Ayah {
+  id          Int           @id @default(autoincrement())
+  kitabId     Int
+  surahId     Int?
+  surahNumber Int
+  ayahNumber  Int
+  paraId      Int?
+  paraNumber  Int?
+  rukuNumber  Int?
+  textArabic  String        @db.LongText
+  translation Translation[]
+  tafsirs     Tafsir[]
+
+  surah Surah? @relation(fields: [surahId], references: [id])
+  para  Para?  @relation(fields: [paraId], references: [id])
+  kitab Kitab  @relation(fields: [kitabId], references: [id])
+
+  @@unique([surahNumber, ayahNumber])
+}
+
+model Translation {
+  id         Int    @id @default(autoincrement())
+  ayahId     Int
+  language   String // en, ur, bn, etc.
+  translator String
+  text       String @db.LongText
+
+  ayah Ayah @relation(fields: [ayahId], references: [id])
+}
+
+model Tafsir {
+  id      Int    @id @default(autoincrement())
+  ayahId  Int
+  scholar String
+  text    String @db.LongText
+
+  ayah Ayah @relation(fields: [ayahId], references: [id])
+}
