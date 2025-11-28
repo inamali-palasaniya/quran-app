@@ -9,7 +9,7 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import Pagination from '@mui/material/Pagination';
-import Grid from '@mui/material/Grid';
+import Pagination from '@mui/material/Pagination';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
@@ -339,9 +339,9 @@ export default function SurahsPage() {
                 </Button>
             </Box>
 
-            <Grid container spacing={2} sx={{ flex: 1, overflow: 'hidden', height: '100%' }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, flex: 1, overflow: 'hidden', height: '100%' }}>
                 {/* Left Column: Surah List */}
-                <Grid size={{ xs: 12, md: 4 }} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ width: { xs: '100%', md: '33%' }, height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <Paper sx={{ flex: 1, overflow: 'auto', mb: 2 }}>
                         <List>
                             {displayedSurahs.map((surah: any) => (
@@ -399,10 +399,10 @@ export default function SurahsPage() {
                             size="small"
                         />
                     </Box>
-                </Grid>
+                </Box>
 
                 {/* Right Column: Surah Details */}
-                <Grid size={{ xs: 12, md: 8 }} sx={{ height: '100%', overflow: 'hidden' }}>
+                <Box sx={{ flex: 1, height: '100%', overflow: 'hidden' }}>
                     {selectedSurahDetails ? (
                         <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2, overflow: 'hidden' }}>
                             {/* Header */}
@@ -519,8 +519,8 @@ export default function SurahsPage() {
                             </Typography>
                         </Paper>
                     )}
-                </Grid>
-            </Grid>
+                </Box>
+            </Box>
 
             {/* Dialogs */}
             <SurahDialog
