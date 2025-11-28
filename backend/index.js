@@ -9,6 +9,10 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
+app.get('/', (req, res) => {
+    res.send('Quran App Backend is running');
+});
+
 // Routes
 
 // --- Kitabs ---
