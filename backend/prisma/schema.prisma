@@ -84,3 +84,13 @@ model Tafsir {
 
   ayah Ayah @relation(fields: [ayahId], references: [id])
 }
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("user") // user, admin
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

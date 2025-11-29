@@ -3,8 +3,12 @@ const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
 
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
 const app = express();
 const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
 app.use(cors());
 app.use(express.json());
@@ -14,6 +18,43 @@ app.get('/', (req, res) => {
 });
 
 // Routes
+
+// --- Auth ---
+app.post('/auth/register', async (req, res) => {
+    try {
+        const { email, password, name, role } = req.body;
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                name,
+                role: role || 'user'
+            }
+        });
+        const { password: _, ...userWithoutPassword } = user;
+        res.json(userWithoutPassword);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+
+        const valid = await bcrypt.compare(password, user.password);
+        if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+
+        const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+        const { password: _, ...userWithoutPassword } = user;
+        res.json({ token, user: userWithoutPassword });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 // --- Kitabs ---
 app.get('/kitabs', async (req, res) => {
