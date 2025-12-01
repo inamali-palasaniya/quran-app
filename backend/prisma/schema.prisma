@@ -58,6 +58,7 @@ model Ayah {
   textArabic  String        @db.Text
   translation Translation[]
   tafsirs     Tafsir[]
+  audioUrl    String?
 
   surah Surah? @relation(fields: [surahId], references: [id])
   para  Para?  @relation(fields: [paraId], references: [id])

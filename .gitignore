@@ -51,3 +51,4 @@ mobile/ios/
 
 # Backend specific
 backend/node_modules/
+.env*.local

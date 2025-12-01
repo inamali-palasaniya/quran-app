@@ -6,7 +6,7 @@ import axios from 'axios';
 
 // Replace with your actual backend URL (use local IP if testing on device)
 // For Android Emulator use 10.0.2.2, for iOS Simulator use localhost
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8000';
+const API_URL = 'https://quran-app-ten-taupe.vercel.app';
 
 export default function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
     const [email, setEmail] = useState('');
@@ -23,6 +23,7 @@ export default function LoginScreen({ onLogin }: { onLogin: (user: any) => void 
         try {
             setLoading(true);
             setError('');
+
             // Use your actual backend URL here
             const response = await axios.post(`${API_URL}/auth/login`, {
                 email,
@@ -37,8 +38,8 @@ export default function LoginScreen({ onLogin }: { onLogin: (user: any) => void 
 
             onLogin(user);
         } catch (err: any) {
-            console.error(err);
-            setError(err.response?.data?.error || 'Login failed. Please check your connection.');
+            const errorMsg = err.response?.data?.error || err.message || 'Login failed. Please check your connection.';
+            setError(errorMsg);
         } finally {
             setLoading(false);
         }

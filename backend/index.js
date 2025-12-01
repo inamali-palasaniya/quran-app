@@ -179,7 +179,7 @@ app.post('/ayahs', async (req, res) => {
 
 app.put('/ayahs/:id', async (req, res) => {
     try {
-        const { translation, ...ayahData } = req.body;
+        const { translation, tafsir, scholar, ...ayahData } = req.body;
 
         // First update the Ayah scalar fields
         const ayah = await prisma.ayah.update({
@@ -187,9 +187,7 @@ app.put('/ayahs/:id', async (req, res) => {
             data: ayahData
         });
 
-        // If translation is provided, we need to update or create it
-        // For simplicity, we'll delete existing and create new, or find and update.
-        // Let's try to find existing translation for this Ayah
+        // Handle Translation
         if (translation) {
             const existingTranslation = await prisma.translation.findFirst({
                 where: { ayahId: ayah.id }
@@ -207,6 +205,31 @@ app.put('/ayahs/:id', async (req, res) => {
                         text: translation,
                         language: 'en',
                         translator: 'Default'
+                    }
+                });
+            }
+        }
+
+        // Handle Tafsir
+        if (tafsir || scholar) {
+            const existingTafsir = await prisma.tafsir.findFirst({
+                where: { ayahId: ayah.id }
+            });
+
+            if (existingTafsir) {
+                await prisma.tafsir.update({
+                    where: { id: existingTafsir.id },
+                    data: {
+                        text: tafsir || existingTafsir.text,
+                        scholar: scholar || existingTafsir.scholar
+                    }
+                });
+            } else {
+                await prisma.tafsir.create({
+                    data: {
+                        ayahId: ayah.id,
+                        text: tafsir || '',
+                        scholar: scholar || 'Unknown'
                     }
                 });
             }
