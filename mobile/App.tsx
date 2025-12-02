@@ -25,14 +25,20 @@ const theme = {
   },
 };
 
+import { StatusBar } from 'expo-status-bar';
+
+// ... imports
+
 function HomeStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: true }}>
       <Stack.Screen name="Library" component={HomeScreen} />
       <Stack.Screen name="Surahs" component={SurahsScreen} />
     </Stack.Navigator>
   );
 }
+
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 function AppContent() {
   const { user } = useContext(AuthContext);
@@ -59,10 +65,6 @@ function AppContent() {
   );
 }
 
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-
-// ... imports
-
 export default function App() {
   const [fontsLoaded] = useFonts({
     'NooreHira': require('./assets/fonts/NooreHira-Regular.ttf'),
@@ -77,6 +79,7 @@ export default function App() {
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
         <AuthProvider>
+          <StatusBar style="dark" />
           <AppContent />
         </AuthProvider>
       </PaperProvider>

@@ -8,12 +8,14 @@ const AyahDetailsModal = ({ visible, onClose, ayah, onPlay, onUpdate }: any) => 
     const [translation, setTranslation] = useState('');
     const [tafsir, setTafsir] = useState('');
     const [scholar, setScholar] = useState('');
+    const [audioUrl, setAudioUrl] = useState('');
     const { user } = useContext(AuthContext);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (ayah) {
             setTranslation(ayah.translation.find((t: any) => t.language === 'gu')?.text || '');
+            setAudioUrl(ayah.audioUrl || '');
             if (ayah.tafsirs && ayah.tafsirs.length > 0) {
                 setTafsir(ayah.tafsirs[0].text);
                 setScholar(ayah.tafsirs[0].scholar || '');
@@ -31,7 +33,8 @@ const AyahDetailsModal = ({ visible, onClose, ayah, onPlay, onUpdate }: any) => 
             await onUpdate(ayah.id, {
                 translation: translation,
                 tafsir: tafsir,
-                scholar: scholar
+                scholar: scholar,
+                audioUrl: audioUrl
             });
 
             setIsEditing(false);
@@ -87,6 +90,14 @@ const AyahDetailsModal = ({ visible, onClose, ayah, onPlay, onUpdate }: any) => 
                                     onChangeText={setScholar}
                                     style={styles.input}
                                 />
+                                <TextInput
+                                    label="Audio URL (MP3)"
+                                    mode="outlined"
+                                    value={audioUrl}
+                                    onChangeText={setAudioUrl}
+                                    style={styles.input}
+                                    placeholder="https://example.com/audio.mp3"
+                                />
                             </>
                         ) : (
                             <>
@@ -96,6 +107,13 @@ const AyahDetailsModal = ({ visible, onClose, ayah, onPlay, onUpdate }: any) => 
                                 <View style={styles.divider} />
                                 <Title style={{ fontSize: 16, marginTop: 10 }}>Tafseer {scholar ? `(${scholar})` : ''}</Title>
                                 <Paragraph style={styles.modalText}>{tafsir || 'No Tafseer available'}</Paragraph>
+                                {audioUrl ? (
+                                    <>
+                                        <View style={styles.divider} />
+                                        <Title style={{ fontSize: 16, marginTop: 10 }}>Custom Audio</Title>
+                                        <Paragraph style={styles.modalText} numberOfLines={1}>{audioUrl}</Paragraph>
+                                    </>
+                                ) : null}
                             </>
                         )}
                     </ScrollView>
