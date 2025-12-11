@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Modal, StyleSheet } from 'react-native';
 import { Title, Button, TextInput } from 'react-native-paper';
 
-const EditKitabModal = ({ visible, onClose, kitab, onUpdate }: any) => {
+const EditKitabModal = ({ visible, onClose, kitab, onUpdate, onCreate }: any) => {
     const [name, setName] = useState('');
     const [nameArabic, setNameArabic] = useState('');
     const [description, setDescription] = useState('');
@@ -13,18 +13,26 @@ const EditKitabModal = ({ visible, onClose, kitab, onUpdate }: any) => {
             setName(kitab.name);
             setNameArabic(kitab.nameArabic);
             setDescription(kitab.description || '');
+        } else {
+            setName('');
+            setNameArabic('');
+            setDescription('');
         }
-    }, [kitab]);
+    }, [kitab, visible]);
 
     const handleSave = async () => {
-        if (!kitab) return;
         setLoading(true);
         try {
-            await onUpdate(kitab.id, { name, nameArabic, description });
+            if (kitab) {
+                await onUpdate(kitab.id, { name, nameArabic, description });
+                alert('Kitab updated successfully!');
+            } else {
+                await onCreate({ name, nameArabic, description });
+                alert('Kitab created successfully!');
+            }
             onClose();
-            alert('Kitab updated successfully!');
         } catch (error) {
-            alert('Failed to update Kitab');
+            alert('Failed to save Kitab');
         } finally {
             setLoading(false);
         }
@@ -34,7 +42,7 @@ const EditKitabModal = ({ visible, onClose, kitab, onUpdate }: any) => {
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <View style={styles.modalOverlay}>
                 <View style={styles.modalContent}>
-                    <Title style={{ textAlign: 'center', marginBottom: 20 }}>Edit Kitab</Title>
+                    <Title style={{ textAlign: 'center', marginBottom: 20 }}>{kitab ? 'Edit Kitab' : 'Add New Kitab'}</Title>
                     <TextInput label="Name (English)" value={name} onChangeText={setName} style={styles.input} />
                     <TextInput label="Name (Arabic)" value={nameArabic} onChangeText={setNameArabic} style={styles.input} />
                     <TextInput label="Description" value={description} onChangeText={setDescription} style={styles.input} multiline />

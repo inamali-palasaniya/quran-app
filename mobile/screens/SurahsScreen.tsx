@@ -1,30 +1,62 @@
+import * as SecureStore from 'expo-secure-store';
+
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, FlatList, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Title, Paragraph, Card, IconButton } from 'react-native-paper';
+import { Title, IconButton, Searchbar, Card, Paragraph, FAB } from 'react-native-paper';
 import axios from 'axios';
-import { useAudioPlayer } from 'expo-audio';
 import { AuthContext } from '../context/AuthContext';
 import { API_URL } from '../constants';
-import EditSurahModal from '../components/EditSurahModal';
 import ReaderView from './ReaderView';
-import quranData from '../assets/quran_data.json'; // Fallback data
+import EditSurahModal from '../components/EditSurahModal';
+import quranData from '../assets/quran_data.json';
+import { Audio } from 'expo-av';
 
-function SurahsScreen({ route }: any) {
+function SurahsScreen({ route, navigation }: any) {
     const { kitabId } = route.params;
     const [surahs, setSurahs] = useState<any[]>([]);
     const [selectedSurah, setSelectedSurah] = useState<any>(null);
     const [fatihaData, setFatihaData] = useState<any>(null);
-    const [currentAudioUri, setCurrentAudioUri] = useState<string | null>(null);
+    const [player, setPlayer] = useState<Audio.Sound | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentPlayingAyah, setCurrentPlayingAyah] = useState<number | null>(null);
     const [playingBismillah, setPlayingBismillah] = useState(false);
     const [autoPlay, setAutoPlay] = useState(false);
-    const player = useAudioPlayer(currentAudioUri);
-    const playNextAyahRef = useRef(() => { });
+    const [currentAudioUri, setCurrentAudioUri] = useState('');
+    const playNextAyahRef = useRef<() => void>(() => { });
 
-    const { user } = useContext(AuthContext);
+    useEffect(() => {
+        return () => {
+            if (player) {
+                player.unloadAsync();
+            }
+        };
+    }, [player]);
+
+    useEffect(() => {
+        const loadAudio = async () => {
+            if (currentAudioUri) {
+                try {
+                    if (player) {
+                        await player.unloadAsync();
+                    }
+                    const { sound } = await Audio.Sound.createAsync(
+                        { uri: currentAudioUri },
+                        { shouldPlay: true }
+                    );
+                    setPlayer(sound);
+                    setIsPlaying(true);
+                } catch (error) {
+                    console.error('Failed to load audio', error);
+                }
+            }
+        };
+        loadAudio();
+    }, [currentAudioUri]);
+    const { user, setUser } = useContext(AuthContext);
     const [editingSurah, setEditingSurah] = useState<any>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isCreating, setIsCreating] = useState(false);
 
     const fetchSurahs = async () => {
         try {
@@ -58,6 +90,11 @@ function SurahsScreen({ route }: any) {
         await axios.put(`${API_URL}/surahs/${id}`, data);
     };
 
+    const createSurah = async (data: any) => {
+        await axios.post(`${API_URL}/surahs`, { ...data, kitabId });
+        fetchSurahs();
+    };
+
     const updateAyah = async (id: number, data: any) => {
         await axios.put(`${API_URL}/ayahs/${id}`, data);
         // Refresh surah details
@@ -70,10 +107,10 @@ function SurahsScreen({ route }: any) {
     useEffect(() => {
         if (player) {
             if (isPlaying) {
-                player.play();
+                player.playAsync();
             }
 
-            const subscription = player.addListener('playbackStatusUpdate', (status: any) => {
+            const subscription = player.setOnPlaybackStatusUpdate((status: any) => {
                 if (status.didJustFinish && !status.isLooping) {
                     if (autoPlay) {
                         playNextAyahRef.current();
@@ -83,19 +120,16 @@ function SurahsScreen({ route }: any) {
                     }
                 }
             });
-            return () => subscription.remove();
+            return () => { };
         }
     }, [player, isPlaying, autoPlay]);
 
-    const playAyahAudio = (surahNum: number, ayahNum: number, isBismillah: boolean = false) => {
+    const playAyahAudio = async (surahNum: number, ayahNum: number, isBismillah: boolean = false) => {
         let uri = '';
 
         if (isBismillah && fatihaData?.ayahs?.[0]) {
             uri = fatihaData.ayahs[0].audioUrl || `https://everyayah.com/data/Alafasy_128kbps/001001.mp3`;
         } else {
-            // Find the ayah in selectedSurah to check for custom audio
-            // Note: selectedSurah might be null if we are just playing from a list, but here we usually have it.
-            // If surahNum is different from selectedSurah (unlikely in this view unless playing next surah?), we might fallback.
             const ayah = selectedSurah?.ayahs?.find((a: any) => a.ayahNumber === ayahNum);
 
             if (ayah?.audioUrl) {
@@ -116,24 +150,22 @@ function SurahsScreen({ route }: any) {
         setAutoPlay(true);
     };
 
-    const stopAudio = () => {
-        if (player) player.pause();
+    const stopAudio = async () => {
+        if (player) await player.stopAsync();
         setIsPlaying(false);
         setCurrentPlayingAyah(null);
         setPlayingBismillah(false);
         setAutoPlay(false);
     };
 
-    const pauseAudio = () => {
-        if (player) player.pause();
+    const pauseAudio = async () => {
+        if (player) await player.pauseAsync();
         setIsPlaying(false);
         setAutoPlay(false);
     };
 
     const playNextAyah = () => {
         if (playingBismillah && selectedSurah) {
-            // BUG FIX: For Surah Fatiha (1), after Bismillah (Ayah 1), we should go to Ayah 2.
-            // For others, we go to Ayah 1.
             const nextAyah = selectedSurah.surahNumber === 1 ? 2 : 1;
             playAyahAudio(selectedSurah.surahNumber, nextAyah, false);
         } else if (selectedSurah && currentPlayingAyah) {
@@ -141,18 +173,17 @@ function SurahsScreen({ route }: any) {
             if (nextAyahNum <= selectedSurah.versesCount) {
                 playAyahAudio(selectedSurah.surahNumber, nextAyahNum, false);
             } else {
-                stopAudio();
+                // Surah finished, play next Surah
+                handleNextSurah();
             }
         }
     };
 
     const playPrevAyah = () => {
         if (currentPlayingAyah === 1 && !playingBismillah && selectedSurah) {
-            // Go back to Bismillah
             playAyahAudio(1, 1, true);
         } else if (selectedSurah && currentPlayingAyah && !playingBismillah) {
             const prevAyahNum = currentPlayingAyah - 1;
-            // For Fatiha, if we are at Ayah 2, prev should be Ayah 1 (Bismillah)
             if (selectedSurah.surahNumber === 1 && prevAyahNum === 1) {
                 playAyahAudio(1, 1, true);
             } else if (prevAyahNum >= 1) {
@@ -160,6 +191,30 @@ function SurahsScreen({ route }: any) {
             }
         }
     };
+
+    const [pendingAutoPlay, setPendingAutoPlay] = useState(false);
+
+    useEffect(() => {
+        if (pendingAutoPlay && selectedSurah) {
+            // Play Bismillah (Ayah 1 of Fatiha) if it's not Fatiha itself (Surah 1)
+            // Actually, for Surah 1, Bismillah IS Ayah 1.
+            // For others, we usually play Bismillah first.
+            // The user said "starts every surah with 1st ayah means bismillah then suras 1st ayah"
+            // My playAyahAudio handles isBismillah flag.
+
+            // If Surah 1: Play Ayah 1 (which is Bismillah)
+            // If Surah > 1: Play Bismillah (from Fatiha) then Ayah 1
+
+            if (selectedSurah.surahNumber === 1) {
+                playAyahAudio(1, 1, true);
+            } else {
+                playAyahAudio(1, 1, true); // Play Bismillah
+                // Note: The player listener will handle playing next ayah (Ayah 1 of Surah) after Bismillah finishes if autoPlay is true.
+                // playAyahAudio sets autoPlay=true.
+            }
+            setPendingAutoPlay(false);
+        }
+    }, [selectedSurah, pendingAutoPlay]);
 
     useEffect(() => {
         playNextAyahRef.current = playNextAyah;
@@ -179,6 +234,64 @@ function SurahsScreen({ route }: any) {
         }
     };
 
+    const handleNextSurah = async () => {
+        if (!selectedSurah) return;
+        const nextSurahNum = selectedSurah.surahNumber + 1;
+        if (nextSurahNum > 114) return;
+
+        stopAudio();
+
+        // Optimistic update or fetch
+        try {
+            const response = await axios.get(`${API_URL}/surahs/${nextSurahNum}`);
+            setSelectedSurah(response.data);
+            setPendingAutoPlay(true);
+        } catch (e) {
+            console.error("Could not fetch next surah", e);
+        }
+    };
+
+    const handlePrevSurah = async () => {
+        if (!selectedSurah) return;
+        const prevSurahNum = selectedSurah.surahNumber - 1;
+        if (prevSurahNum < 1) return;
+
+        stopAudio();
+
+        try {
+            const response = await axios.get(`${API_URL}/surahs/${prevSurahNum}`);
+            setSelectedSurah(response.data);
+            setPendingAutoPlay(true);
+        } catch (e) {
+            console.error("Could not fetch prev surah", e);
+        }
+    };
+
+    const onChangeSearch = (query: string) => setSearchQuery(query);
+
+    const filteredSurahs = surahs.filter(surah =>
+        surah.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        surah.nameArabic.includes(searchQuery) ||
+        surah.surahNumber.toString().includes(searchQuery)
+    );
+
+    const createAyah = async (data: any) => {
+        if (!selectedSurah) return;
+        try {
+            await axios.post(`${API_URL}/ayahs`, {
+                ...data,
+                surahId: selectedSurah.id,
+                paraId: 1 // Default to 1 for now, will be updated by script later or user can edit
+            });
+            // Refresh surah details
+            const response = await axios.get(`${API_URL}/surahs/${selectedSurah.id}`);
+            setSelectedSurah(response.data);
+        } catch (error) {
+            console.error('Failed to create ayah', error);
+            alert('Failed to create ayah');
+        }
+    };
+
     if (selectedSurah) {
         return (
             <ReaderView
@@ -194,6 +307,9 @@ function SurahsScreen({ route }: any) {
                 onUpdate={updateAyah}
                 onNext={playNextAyah}
                 onPrev={playPrevAyah}
+                onNextSurah={handleNextSurah}
+                onPrevSurah={handlePrevSurah}
+                onAddAyah={createAyah}
             />
         );
     }
@@ -202,9 +318,29 @@ function SurahsScreen({ route }: any) {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <Title>Surahs</Title>
+                <IconButton
+                    icon={user ? "logout" : "login"}
+                    iconColor="#1e40af"
+                    size={24}
+                    onPress={async () => {
+                        if (user) {
+                            await SecureStore.deleteItemAsync('userToken');
+                            await SecureStore.deleteItemAsync('userData');
+                            setUser(null);
+                        } else {
+                            navigation.navigate('Login');
+                        }
+                    }}
+                />
             </View>
+            <Searchbar
+                placeholder="Search Surah"
+                onChangeText={onChangeSearch}
+                value={searchQuery}
+                style={styles.searchBar}
+            />
             <FlatList
-                data={surahs}
+                data={filteredSurahs}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => (
                     <Card style={styles.surahCard} onPress={() => handleSurahPress(item)}>
@@ -227,14 +363,23 @@ function SurahsScreen({ route }: any) {
                 )}
             />
 
+            {user?.role === 'admin' && (
+                <FAB
+                    style={styles.fab}
+                    icon="plus"
+                    onPress={() => setIsCreating(true)}
+                />
+            )}
+
             <EditSurahModal
-                visible={!!editingSurah}
+                visible={!!editingSurah || isCreating}
                 surah={editingSurah}
-                onClose={() => setEditingSurah(null)}
+                onClose={() => { setEditingSurah(null); setIsCreating(false); }}
                 onUpdate={async (id: number, data: any) => {
                     await updateSurah(id, data);
                     fetchSurahs();
                 }}
+                onCreate={createSurah}
             />
         </SafeAreaView>
     );
@@ -242,11 +387,19 @@ function SurahsScreen({ route }: any) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+    header: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     surahCard: { marginBottom: 10, marginHorizontal: 15, backgroundColor: '#fff' },
     surahCardContent: { flexDirection: 'row', alignItems: 'center' },
     surahNumberBadge: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
     surahNumberText: { color: '#1e40af', fontWeight: 'bold' },
+    searchBar: { margin: 15, elevation: 2, backgroundColor: '#fff' },
+    fab: {
+        position: 'absolute',
+        margin: 16,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#1e40af',
+    },
 });
 
 export default SurahsScreen;

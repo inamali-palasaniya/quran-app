@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Modal, StyleSheet } from 'react-native';
 import { Title, Button, TextInput } from 'react-native-paper';
 
-const EditSurahModal = ({ visible, onClose, surah, onUpdate }: any) => {
+const EditSurahModal = ({ visible, onClose, surah, onUpdate, onCreate }: any) => {
     const [name, setName] = useState('');
     const [nameArabic, setNameArabic] = useState('');
     const [versesCount, setVersesCount] = useState('');
     const [revelation, setRevelation] = useState('');
+    const [surahNumber, setSurahNumber] = useState('');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -15,23 +16,37 @@ const EditSurahModal = ({ visible, onClose, surah, onUpdate }: any) => {
             setNameArabic(surah.nameArabic);
             setVersesCount(surah.versesCount ? surah.versesCount.toString() : '');
             setRevelation(surah.revelation || '');
+            setSurahNumber(surah.surahNumber ? surah.surahNumber.toString() : '');
+        } else {
+            setName('');
+            setNameArabic('');
+            setVersesCount('');
+            setRevelation('');
+            setSurahNumber('');
         }
-    }, [surah]);
+    }, [surah, visible]);
 
     const handleSave = async () => {
-        if (!surah) return;
         setLoading(true);
         try {
-            await onUpdate(surah.id, {
+            const data = {
                 name,
                 nameArabic,
                 versesCount: parseInt(versesCount),
-                revelation
-            });
+                revelation,
+                surahNumber: parseInt(surahNumber)
+            };
+
+            if (surah) {
+                await onUpdate(surah.id, data);
+                alert('Surah updated successfully!');
+            } else {
+                await onCreate(data);
+                alert('Surah created successfully!');
+            }
             onClose();
-            alert('Surah updated successfully!');
         } catch (error) {
-            alert('Failed to update Surah');
+            alert('Failed to save Surah');
         } finally {
             setLoading(false);
         }
@@ -41,7 +56,8 @@ const EditSurahModal = ({ visible, onClose, surah, onUpdate }: any) => {
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <View style={styles.modalOverlay}>
                 <View style={styles.modalContent}>
-                    <Title style={{ textAlign: 'center', marginBottom: 20 }}>Edit Surah</Title>
+                    <Title style={{ textAlign: 'center', marginBottom: 20 }}>{surah ? 'Edit Surah' : 'Add New Surah'}</Title>
+                    <TextInput label="Surah Number" value={surahNumber} onChangeText={setSurahNumber} keyboardType="numeric" style={styles.input} />
                     <TextInput label="Name (English)" value={name} onChangeText={setName} style={styles.input} />
                     <TextInput label="Name (Arabic)" value={nameArabic} onChangeText={setNameArabic} style={styles.input} />
                     <TextInput label="Verses Count" value={versesCount} onChangeText={setVersesCount} keyboardType="numeric" style={styles.input} />

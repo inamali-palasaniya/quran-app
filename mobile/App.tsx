@@ -1,6 +1,5 @@
 import React, { useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider as PaperProvider, DefaultTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,11 +7,11 @@ import { useFonts } from 'expo-font';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 
 // Screens
+// Screens
 import HomeScreen from './screens/HomeScreen';
 import SurahsScreen from './screens/SurahsScreen';
-import AdminScreen from './screens/AdminScreen';
+import LoginScreen from './screens/LoginScreen';
 
-const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 const theme = {
@@ -29,15 +28,6 @@ import { StatusBar } from 'expo-status-bar';
 
 // ... imports
 
-function HomeStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: true }}>
-      <Stack.Screen name="Library" component={HomeScreen} />
-      <Stack.Screen name="Surahs" component={SurahsScreen} />
-    </Stack.Navigator>
-  );
-}
-
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 function AppContent() {
@@ -45,22 +35,11 @@ function AppContent() {
 
   return (
     <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ color, size }) => {
-            let iconName: any;
-            if (route.name === 'Home') iconName = 'book-open-variant';
-            else if (route.name === 'Admin') iconName = 'shield-account';
-            return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: '#1e40af',
-          tabBarInactiveTintColor: 'gray',
-          headerShown: false,
-        })}
-      >
-        <Tab.Screen name="Home" component={HomeStack} />
-        <Tab.Screen name="Admin" component={AdminScreen} />
-      </Tab.Navigator>
+      <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: true }}>
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Surahs" component={SurahsScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

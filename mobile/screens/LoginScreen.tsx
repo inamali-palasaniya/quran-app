@@ -1,18 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, StyleSheet, Alert, TextInput as RNTextInput } from 'react-native';
 import { Button, Text, Title } from 'react-native-paper';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
+import { AuthContext } from '../context/AuthContext';
+import { API_URL } from '../constants';
 
-// Replace with your actual backend URL (use local IP if testing on device)
-// For Android Emulator use 10.0.2.2, for iOS Simulator use localhost
-const API_URL = 'https://quran-app-ten-taupe.vercel.app';
-
-export default function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
+export default function LoginScreen({ navigation }: any) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const { setUser } = useContext(AuthContext);
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -24,7 +23,6 @@ export default function LoginScreen({ onLogin }: { onLogin: (user: any) => void 
             setLoading(true);
             setError('');
 
-            // Use your actual backend URL here
             const response = await axios.post(`${API_URL}/auth/login`, {
                 email,
                 password,
@@ -36,7 +34,8 @@ export default function LoginScreen({ onLogin }: { onLogin: (user: any) => void 
             await SecureStore.setItemAsync('userToken', token);
             await SecureStore.setItemAsync('userData', JSON.stringify(user));
 
-            onLogin(user);
+            setUser(user);
+            navigation.goBack();
         } catch (err: any) {
             const errorMsg = err.response?.data?.error || err.message || 'Login failed. Please check your connection.';
             setError(errorMsg);

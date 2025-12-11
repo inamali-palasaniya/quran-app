@@ -1,20 +1,24 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Title, IconButton, Button } from 'react-native-paper';
+import { Title, IconButton, Button, FAB, Divider } from 'react-native-paper';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { AuthContext } from '../context/AuthContext';
 import { toArabicNumerals } from '../utils';
 import AudioControlBar from '../components/AudioControlBar';
 import AyahDetailsModal from '../components/AyahDetailsModal';
+import AddAyahModal from '../components/AddAyahModal';
 
-function ReaderView({ surah, bismillahAyah, onBack, isPlaying, currentPlayingAyah, playingBismillah, onPlayAyah, onStop, onPause, onUpdate, onNext, onPrev }: any) {
+function ReaderView({ surah, bismillahAyah, onBack, isPlaying, currentPlayingAyah, playingBismillah, onPlayAyah, onStop, onPause, onUpdate, onNext, onPrev, onNextSurah, onPrevSurah, onAddAyah }: any) {
     const [fontSize, setFontSize] = useState(24);
     const [isBold, setIsBold] = useState(false);
     const { user } = useContext(AuthContext);
     const [modalVisible, setModalVisible] = useState(false);
+    const [addModalVisible, setAddModalVisible] = useState(false);
     const [selectedAyah, setSelectedAyah] = useState<any>(null);
+    const [textLayout, setTextLayout] = useState<{ height: number } | null>(null);
+    const lineHeight = Math.round(fontSize * 2.6); // Increased line height for better spacing and alignment
 
     const handleAyahPress = (ayah: any) => {
         setSelectedAyah(ayah);
@@ -58,15 +62,42 @@ function ReaderView({ surah, bismillahAyah, onBack, isPlaying, currentPlayingAya
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <View style={styles.readerHeader}>
                 <IconButton icon="arrow-left" onPress={onBack} iconColor="#1e40af" />
-                <Title style={{ fontFamily: 'NooreHiraBold', color: '#1e40af' }}>{surah.nameArabic}</Title>
+
+                <View style={styles.headerControls}>
+                    <IconButton
+                        icon="skip-previous"
+                        onPress={onPrevSurah}
+                        disabled={surah.surahNumber === 1}
+                        iconColor="#1e40af"
+                    />
+                    <IconButton
+                        icon={isPlaying ? "pause-circle" : "play-circle"}
+                        size={40}
+                        onPress={() => isPlaying ? onPause() : (playingBismillah ? onPlayAyah(1, 1, true) : onPlayAyah(surah.surahNumber, currentPlayingAyah || 1, false))}
+                        iconColor="#1e40af"
+                    />
+                    <IconButton
+                        icon="skip-next"
+                        onPress={onNextSurah}
+                        disabled={surah.surahNumber === 114}
+                        iconColor="#1e40af"
+                    />
+                </View>
+
                 <View style={{ flexDirection: 'row' }}>
-                    <Button mode="text" icon="play" onPress={() => onPlayAyah(1, 1, true)}>Play Surah</Button>
-                    <IconButton icon="file-pdf-box" onPress={exportSurahToPDF} iconColor="#1e40af" />
-                    <IconButton icon="format-size" onPress={() => setFontSize(Math.min(40, fontSize + 2))} />
+                    <IconButton icon="minus" onPress={() => setFontSize(Math.max(16, fontSize - 2))} iconColor="#64748b" />
+                    <IconButton icon="plus" onPress={() => setFontSize(Math.min(40, fontSize + 2))} iconColor="#64748b" />
                 </View>
             </View>
 
             <ScrollView contentContainerStyle={styles.readerContent}>
+                {/* Background Lines */}
+                <View style={[StyleSheet.absoluteFill, styles.linesContainer]} pointerEvents="none">
+                    {Array.from({ length: 200 }).map((_, i) => (
+                        <View key={i} style={{ height: lineHeight, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', width: '100%' }} />
+                    ))}
+                </View>
+
                 {/* Professional Blue Header (CSS-based) */}
                 <View style={styles.blueHeaderContainer}>
                     <View style={styles.blueHeaderInner}>
@@ -80,24 +111,25 @@ function ReaderView({ surah, bismillahAyah, onBack, isPlaying, currentPlayingAya
 
                 {bismillahAyah ? (
                     // Universal Bismillah header for all Surahs
-                    <TouchableOpacity onPress={() => handleAyahPress(bismillahAyah)}>
+                    <TouchableOpacity onPress={() => handleAyahPress(bismillahAyah)} style={styles.bismillahContainer}>
                         <Text style={[styles.bismillah, { fontFamily: 'NooreHiraBold', color: playingBismillah ? '#1e40af' : '#000' }]}>
                             {bismillahAyah.textArabic} ۝١
                         </Text>
                     </TouchableOpacity>
                 ) : null}
 
-                <Text style={styles.quranText}>
+                <Text style={[styles.quranText, { lineHeight, textAlign: 'justify', writingDirection: 'rtl' }]}>
                     {ayahsToRender.map((ayah: any) => {
                         const isActive = currentPlayingAyah === ayah.ayahNumber && !playingBismillah;
                         return (
-                            <Text key={ayah.id} onPress={() => handleAyahPress(ayah)}>
-                                <Text style={[
+                            <Text
+                                key={ayah.id}
+                                onPress={() => handleAyahPress(ayah)}
+                                style={[
                                     styles.arabicText,
                                     { fontSize, fontFamily: isBold ? 'NooreHiraBold' : 'NooreHira', color: isActive ? '#1e40af' : '#000' }
                                 ]}>
-                                    {ayah.textArabic}
-                                </Text>
+                                {ayah.textArabic}
                                 <Text style={[styles.ayahEnd, { fontSize: fontSize - 5, fontFamily: 'NooreHira' }]}>
                                     {' '}۝{toArabicNumerals(ayah.ayahNumber)}{' '}
                                 </Text>
@@ -107,7 +139,7 @@ function ReaderView({ surah, bismillahAyah, onBack, isPlaying, currentPlayingAya
                 </Text>
             </ScrollView>
 
-            {/* Audio Control Bar */}
+            {/* Audio Control Bar (Sticky at bottom if playing) */}
             {(currentPlayingAyah || playingBismillah) && (
                 <AudioControlBar
                     isPlaying={isPlaying}
@@ -132,17 +164,38 @@ function ReaderView({ surah, bismillahAyah, onBack, isPlaying, currentPlayingAya
                 }}
                 onUpdate={onUpdate}
             />
+
+            {user?.role === 'admin' && (
+                <FAB
+                    style={styles.fab}
+                    icon="plus"
+                    onPress={() => setAddModalVisible(true)}
+                />
+            )}
+
+            <AddAyahModal
+                visible={addModalVisible}
+                onClose={() => setAddModalVisible(false)}
+                nextAyahNumber={surah.ayahs.length + (surah.surahNumber === 1 ? 2 : 1)} // Simple estimation, backend should handle real logic or we pass exact
+                onAdd={onAddAyah}
+            />
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    readerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, backgroundColor: '#fff', elevation: 2 },
-    readerContent: { padding: 15, paddingBottom: 80 },
-    bismillah: { textAlign: 'center', fontSize: 28, marginBottom: 20, color: '#000' },
-    quranText: { textAlign: 'justify', writingDirection: 'rtl', lineHeight: 50 },
-    ayahContainer: { marginBottom: 15 },
+    readerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#fff', elevation: 2, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+    headerControls: { flexDirection: 'row', alignItems: 'center' },
+    readerContent: { padding: 15, paddingBottom: 100 },
+    bismillahContainer: { marginBottom: 20, alignItems: 'center' },
+    bismillah: { fontSize: 28, color: '#000' },
+    quranText: {
+        textAlign: 'justify',
+        writingDirection: 'rtl',
+        includeFontPadding: false,
+        textAlignVertical: 'top', // Anchor to top to prevent centering drift
+    },
     arabicText: { color: '#000' },
     ayahEnd: { color: '#1e40af' },
 
@@ -187,6 +240,18 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: 1,
+    },
+    linesContainer: {
+        zIndex: -1,
+        marginTop: 180, // Offset for header + bismillah
+        paddingHorizontal: 15,
+    },
+    fab: {
+        position: 'absolute',
+        margin: 16,
+        right: 0,
+        bottom: 100, // Above audio bar
+        backgroundColor: '#1e40af',
     },
 });
 
